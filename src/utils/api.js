@@ -44,8 +44,8 @@ class Api {
   }
 
 
-  removeCard(card) {
-    return fetch(`${this.baseUrl}/cards/${card.cardId}`, {
+  deleteCard(cardId) {
+    return fetch(`${this.baseUrl}/cards/${cardId}`, {
         method: 'DELETE',
         headers: this.headers
       })
@@ -78,8 +78,8 @@ class Api {
   }
   
 
-  updateCardLike(card, isLiked) {
-    return fetch(`${this.baseUrl}/cards/${card.cardId}/likes`, {
+  updateCardLike(cardId, isLiked) {
+    return fetch(`${this.baseUrl}/cards/${cardId}/likes`, {
         method: isLiked ? 'DELETE' : 'PUT',
         headers: this.headers
       })

@@ -2,10 +2,11 @@ function PopupWithForm(props) {
   return (
     <div className={`${props.isOpen && "popup_opened"} popup popup_type_${props.name}`}> 
       <div className="popup__container">
-        <form name={`form-${props.name}`} className="form" noValidate="">
+        <form name={`form-${props.name}`} className={`form form_type_${props.name}`} onSubmit={props.onSubmit} noValidate={true}>
           <h2 className="form__title">{props.title}</h2>
           {props.children}
-          <button type="button" className="form__submit">Сохранить</button>
+          {props.loading ? (<button type="submit" className="form__submit form__submit_inactive">Отправка...</button>) 
+          : (<button type="submit" className="form__submit">{props.submitText}</button>)}
         </form>
         <button type="button" className="popup__close-btn" onClick={props.onClose}/>
       </div>

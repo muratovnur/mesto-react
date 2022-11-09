@@ -1,6 +1,6 @@
 function ImagePopup(props) {
   return (
-    <div className={`${props.card && "popup_opened"} popup popup_type_inspect-image`}>
+    <div className={`${props.isOpen && "popup_opened"} popup popup_type_inspect-image`}>
         <div className="popup__image-container">
           <img className="popup__image" src={`${props.card && props.card.link}`} alt={`Изображение ${props.card && props.card.name}`}/>
           <h2 className="popup__subtitle">{props.card && props.card.name}</h2>

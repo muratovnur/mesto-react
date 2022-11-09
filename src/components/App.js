@@ -1,16 +1,35 @@
+import React from "react";
+
 import Header from "./Header";
 import Main from "./Main";
 import Footer from "./Footer";
-import PopupWithForm from "./PopupWithForm";
 import ImagePopup from "./ImagePopup";
-import React from "react";
+import EditProfilePopup from "./EditProfilePopup";
+import EditAvatarPopup from "./EditAvatarPopup";
+import AddPlacePopup from "./AddCardPopup";
+import ConfirmPopup from "./ConfirmPopup";
+
+import api from "../utils/api";
+import { CurrentUserContext } from "../contexts/CurrentUserContext";
+import FormValidator from "../utils/FormValidator";
+import { validationConfig } from '../utils/utils';
 
 function App() {
-
   const [isEditProfilePopupOpen, setIsEditProfilePopupOpen] = React.useState(false);
   const [isAddPlacePopupOpen, setIsAddPlacePopupOpen] = React.useState(false);
   const [isEditAvatarPopupOpen, setIsEditAvatarPopupOpen] = React.useState(false);
+  const [isImagePopupOpen, setIsImagePopupOpen] = React.useState(false);
+  const [isConfirmPopupOpen, setIsConfirmPopupOpen] = React.useState(false);
+  
   const [selectedCard, setSelectedCard] = React.useState(null);
+  const [currentUser, setCurrentUser] = React.useState({about: '', avatar: '', name: '', _id: ''});
+  const [cards, setCards] = React.useState([]);
+  const [requestInProgress, setRequestInProgress] = React.useState(false);
+  
+  //Поробовал сделать валидацию форм
+  const formUpdateUserValidator = React.useRef(null);
+  const formAddPlaceValidator = React.useRef(null);
+  const formUpdateAvatarValidator= React.useRef(null);
 
   function handleEditAvatarClick() {
     setIsEditAvatarPopupOpen(true);
@@ -24,7 +43,13 @@ function App() {
     setIsAddPlacePopupOpen(true);
   }
 
+  function handleCardDeleteClick(card) {
+    setIsConfirmPopupOpen(true);
+    setSelectedCard(card);
+  }
+
   function handleCardClick (card) {
+    setIsImagePopupOpen(true);
     setSelectedCard(card);
   }
 
@@ -32,105 +57,149 @@ function App() {
     setIsEditAvatarPopupOpen(false);
     setIsEditProfilePopupOpen(false);
     setIsAddPlacePopupOpen(false);
+    setIsImagePopupOpen(false);
+    setIsConfirmPopupOpen(false);
     setSelectedCard(null);
+    setRequestInProgress(false);
+    //Сброс валидаций форм
+    formUpdateUserValidator.current.resetFormValidation();
+    formUpdateAvatarValidator.current.resetFormValidation();
+    formAddPlaceValidator.current.resetFormValidation();
+  }
+
+  //Поробовал сделать валидацию форм
+  function initializeFormValidation() {
+    formUpdateUserValidator.current = new FormValidator(validationConfig, document.querySelector('.form_type_edit-profile'))
+    formAddPlaceValidator.current = new FormValidator(validationConfig, document.querySelector('.form_type_add-card'));
+    formUpdateAvatarValidator.current = new FormValidator(validationConfig, document.querySelector('.form_type_update-avatar'));
+    formUpdateUserValidator.current.enableValidation();
+    formAddPlaceValidator.current.enableValidation();
+    formUpdateAvatarValidator.current.enableValidation();
+  }
+  
+  React.useEffect(() => {
+    const promiseGetUserInfo = new Promise((resolve, reject) => {
+      api.getUserInfo()
+      .then((userData) => {
+        resolve(userData);
+      })
+      .catch((err) => {
+        console.log(err);
+        reject("Возникли проблемы с получением данных пользователя :(")
+      })
+    })
+
+    const promiseGetInitialCards = new Promise((resolve, reject) => {
+      api.getInitialCards()
+      .then((cardsData) => {
+        resolve(cardsData);
+      })
+      .catch((err) => {
+        console.log(err);
+        reject("Возникли проблемы с получением данных карточек :(")
+      })
+    })
+    
+    Promise.all([promiseGetUserInfo, promiseGetInitialCards])
+    .then(([userData, cardsData]) => {
+      setCurrentUser(userData);
+      setCards(cardsData);
+    })
+    .catch((err) => {
+      console.log(err);
+    })
+
+    initializeFormValidation();
+  }, [])
+   
+
+  function handleUpdateUser(inputData) {
+    setRequestInProgress(true);
+    api.updateUserInfo(inputData.name, inputData.about)
+    .then((updatedUserInfo) => {
+      setCurrentUser((currentUser) => ({...currentUser, name: updatedUserInfo.name, about: updatedUserInfo.about}))
+    })
+    .catch((err) => {
+      console.log(err);
+    })
+    .finally(() => {
+      closeAllPopups();
+    })
+  }
+
+  function handleUpdateAvatar({ avatar }) {
+    setRequestInProgress(true);
+    api.updateUserAvatar(avatar)
+    .then((updatedUserAvatar) => {
+      setCurrentUser((currentUser) => ({...currentUser, avatar: updatedUserAvatar.avatar}))
+    })
+    .catch((err) => {
+      console.log(err);
+    })
+    .finally(() => {
+      closeAllPopups();
+    })
+  }
+
+  function handleAddPlace({ name, link }) {
+    setRequestInProgress(true);
+    api.addCard(name, link)
+    .then((newCard) => {
+      setCards([newCard, ...cards]);
+    })
+    .catch((err) => {
+      console.log(err);
+    })
+    .finally(() => {
+      closeAllPopups();
+    })
+  }
+
+  function handleCardLike(card) {
+    const isLiked = card.likes.some(i => i._id === currentUser._id);
+    
+    api.updateCardLike(card._id, isLiked)
+    .then((newCard) => {
+        setCards((state) => state.map((c) => c._id === card._id ? newCard : c));
+    })
+    .catch((err) => {
+      console.log(err);
+    })
+  }
+
+  function handleCardDelete() {
+    setRequestInProgress(true);
+    api.deleteCard(selectedCard._id)
+    .then(() => {
+      setCards((state) => state.filter((c) => c._id !== selectedCard._id));
+    })
+    .catch((err) => {
+      console.log(err);
+    })
+    .finally(() => {
+      closeAllPopups();
+    })
   }
 
   return (
-    <>
+    <CurrentUserContext.Provider value={currentUser}>
       <Header />
-      <Main onEditProfile={handleEditProfileClick} 
-            onAddPlace={handleAddPlaceClick} 
-            onEditAvatar={handleEditAvatarClick}
-            onCardClick={handleCardClick}
+      <Main 
+        cards={cards}
+        onCardClick={handleCardClick}
+        onCardLike={handleCardLike}
+        onCardDelete={handleCardDeleteClick}
+        onEditProfile={handleEditProfileClick} 
+        onEditAvatar={handleEditAvatarClick}
+        onAddPlace={handleAddPlaceClick}
       />
       <Footer />
-      <PopupWithForm 
-        isOpen={isEditAvatarPopupOpen} 
-        onClose={closeAllPopups} 
-        name="update-avatar"
-        title="Обновить аватар"
-      >
-        <label className="form__field">
-          <input
-            id="avatar-link-input"
-            type="url"
-            name="input-avatar-link"
-            className="form__input form__input_field_avatar-link"
-            placeholder="Ссылка на изображение"
-            required=""
-            autofocus=""
-          />
-          <span className="avatar-link-input-error form__input-error" />
-        </label>
-      </PopupWithForm>
-      <PopupWithForm 
-        isOpen={isEditProfilePopupOpen} 
-        onClose={closeAllPopups}
-        name="edit-profile"
-        title="Редактировать профиль"
-      >
-        <label className="form__field">
-          <input
-            id="profile-name-input"
-            type="text"
-            name="input-profile-name"
-            className="form__input form__input_field_profile-name"
-            placeholder="Введите ваше имя"
-            minLength={2}
-            maxLength={40}
-            required=""
-            autofocus=""
-          />
-          <span className="profile-name-input-error form__input-error" />
-        </label>
-        <label className="form__field">
-          <input
-            id="profile-about-self-input"
-            type="text"
-            name="input-profile-info"
-            className="form__input form__input_field_profile-about-self"
-            placeholder="Введите информацию о себе"
-            minLength={2}
-            maxLength={200}
-            required=""
-          />
-          <span className="profile-about-self-input-error form__input-error" />
-        </label>
-      </PopupWithForm>
-      <PopupWithForm 
-        isOpen={isAddPlacePopupOpen} 
-        onClose={closeAllPopups}
-        name="add-card"
-        title="Новое место"
-      >
-        <label className="form__field">
-          <input
-            id="card-name-input"
-            type="text"
-            name="input-card-name"
-            className="form__input form__input_field_card-name"
-            placeholder="Название"
-            minLength={2}
-            maxLength={30}
-            required=""
-            autofocus=""
-          />
-          <span className="card-name-input-error form__input-error" />
-        </label>
-        <label className="form__field">
-          <input
-            id="card-image-link-input"
-            type="url"
-            name="input-card-link"
-            className="form__input form__input_field_card-link"
-            placeholder="Ссылка на картинку"
-            required=""
-          />
-          <span className="card-image-link-input-error form__input-error" />
-        </label>
-      </PopupWithForm>
-      <ImagePopup card={selectedCard} onClose={closeAllPopups} />
-    </>
+      <EditProfilePopup isOpen={isEditProfilePopupOpen} onClose={closeAllPopups} onUpdateUser={handleUpdateUser} loading={requestInProgress}/>
+      <EditAvatarPopup isOpen={isEditAvatarPopupOpen} onClose={closeAllPopups} onUpdateAvatar={handleUpdateAvatar} loading={requestInProgress}/>
+      <AddPlacePopup isOpen={isAddPlacePopupOpen} onClose={closeAllPopups} onAddPlace={handleAddPlace} loading={requestInProgress}/>
+      <ImagePopup isOpen={isImagePopupOpen} card={selectedCard} onClose={closeAllPopups} />
+      <ConfirmPopup isOpen={isConfirmPopupOpen} onClose={closeAllPopups} onCardDeleteConfirm={handleCardDelete} loading={requestInProgress}/>
+    </CurrentUserContext.Provider>
   );
 }
 
