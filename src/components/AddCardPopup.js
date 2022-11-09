@@ -5,11 +5,11 @@ const AddPlacePopup = (props) => {
   const [name, setName] = React.useState('');
   const [link, setLink] = React.useState('');
 
-  function resetInputs() { 
-    setName(''); 
-    setLink(''); 
-  }
-
+  React.useEffect(() => {
+    setName('');
+    setLink('');
+  }, [props.isOpen])
+  
   function handleSubmit(e) {
     e.preventDefault();
 
@@ -17,7 +17,6 @@ const AddPlacePopup = (props) => {
       name,
       link
     });
-    resetInputs();
   }
 
   function handleName(e) {
@@ -28,21 +27,15 @@ const AddPlacePopup = (props) => {
     setLink(e.target.value);
   }
 
-  //Для корректной работы сброса валидаций, я также возвращаю исходные значения для инпутов
-  function handleClose() {
-    resetInputs();
-    props.onClose();
-  }
-
   return (
     <PopupWithForm 
       isOpen={props.isOpen} 
-      onClose={handleClose}
+      onClose={props.onClose}
       name="add-card"
       title="Новое место"
       onSubmit={handleSubmit}
-      submitText='Создать'
-      loading={props.loading}
+      submitText={`${props.isLoading ? 'Создание...' : 'Создать'}`}
+      isLoading={props.isLoading}
     >
       <label className="form__field">
         <input

@@ -26,7 +26,7 @@ function App() {
   const [cards, setCards] = React.useState([]);
   const [requestInProgress, setRequestInProgress] = React.useState(false);
   
-  //Поробовал сделать валидацию форм
+  //Рефы для валидаций форм
   const formUpdateUserValidator = React.useRef(null);
   const formAddPlaceValidator = React.useRef(null);
   const formUpdateAvatarValidator= React.useRef(null);
@@ -61,13 +61,29 @@ function App() {
     setIsConfirmPopupOpen(false);
     setSelectedCard(null);
     setRequestInProgress(false);
-    //Сброс валидаций форм
-    formUpdateUserValidator.current.resetFormValidation();
-    formUpdateAvatarValidator.current.resetFormValidation();
-    formAddPlaceValidator.current.resetFormValidation();
   }
 
-  //Поробовал сделать валидацию форм
+  /*Для сброса валидаций были использованы хуки, потому что после успешного запроса, 
+  при следующем открытий той же формы, кнопка сабмита всегда была активной.*/
+  React.useEffect(() => {
+    if (isEditAvatarPopupOpen) {
+      formUpdateAvatarValidator.current.resetFormValidation();  
+    }
+  }, [isEditAvatarPopupOpen])
+
+  React.useEffect(() => {
+    if (isEditProfilePopupOpen) {
+      formUpdateUserValidator.current.resetFormValidation();
+    }
+  }, [isEditProfilePopupOpen])
+
+  React.useEffect(() => {
+    if (isAddPlacePopupOpen) {
+      formAddPlaceValidator.current.resetFormValidation();
+    }
+  }, [isAddPlacePopupOpen])
+
+  //Инициализация валидаций форм
   function initializeFormValidation() {
     formUpdateUserValidator.current = new FormValidator(validationConfig, document.querySelector('.form_type_edit-profile'))
     formAddPlaceValidator.current = new FormValidator(validationConfig, document.querySelector('.form_type_add-card'));
@@ -78,29 +94,7 @@ function App() {
   }
   
   React.useEffect(() => {
-    const promiseGetUserInfo = new Promise((resolve, reject) => {
-      api.getUserInfo()
-      .then((userData) => {
-        resolve(userData);
-      })
-      .catch((err) => {
-        console.log(err);
-        reject("Возникли проблемы с получением данных пользователя :(")
-      })
-    })
-
-    const promiseGetInitialCards = new Promise((resolve, reject) => {
-      api.getInitialCards()
-      .then((cardsData) => {
-        resolve(cardsData);
-      })
-      .catch((err) => {
-        console.log(err);
-        reject("Возникли проблемы с получением данных карточек :(")
-      })
-    })
-    
-    Promise.all([promiseGetUserInfo, promiseGetInitialCards])
+    Promise.all([api.getUserInfo(), api.getInitialCards()])
     .then(([userData, cardsData]) => {
       setCurrentUser(userData);
       setCards(cardsData);
@@ -108,7 +102,7 @@ function App() {
     .catch((err) => {
       console.log(err);
     })
-
+    console.log('init');
     initializeFormValidation();
   }, [])
    
@@ -118,12 +112,11 @@ function App() {
     api.updateUserInfo(inputData.name, inputData.about)
     .then((updatedUserInfo) => {
       setCurrentUser((currentUser) => ({...currentUser, name: updatedUserInfo.name, about: updatedUserInfo.about}))
+      closeAllPopups();
     })
     .catch((err) => {
       console.log(err);
-    })
-    .finally(() => {
-      closeAllPopups();
+      setRequestInProgress(false);
     })
   }
 
@@ -132,12 +125,11 @@ function App() {
     api.updateUserAvatar(avatar)
     .then((updatedUserAvatar) => {
       setCurrentUser((currentUser) => ({...currentUser, avatar: updatedUserAvatar.avatar}))
+      closeAllPopups();
     })
     .catch((err) => {
       console.log(err);
-    })
-    .finally(() => {
-      closeAllPopups();
+      setRequestInProgress(false);
     })
   }
 
@@ -146,12 +138,11 @@ function App() {
     api.addCard(name, link)
     .then((newCard) => {
       setCards([newCard, ...cards]);
+      closeAllPopups();
     })
     .catch((err) => {
       console.log(err);
-    })
-    .finally(() => {
-      closeAllPopups();
+      setRequestInProgress(false);
     })
   }
 
@@ -172,12 +163,11 @@ function App() {
     api.deleteCard(selectedCard._id)
     .then(() => {
       setCards((state) => state.filter((c) => c._id !== selectedCard._id));
+      closeAllPopups();
     })
     .catch((err) => {
       console.log(err);
-    })
-    .finally(() => {
-      closeAllPopups();
+      setRequestInProgress(false);
     })
   }
 
@@ -194,11 +184,30 @@ function App() {
         onAddPlace={handleAddPlaceClick}
       />
       <Footer />
-      <EditProfilePopup isOpen={isEditProfilePopupOpen} onClose={closeAllPopups} onUpdateUser={handleUpdateUser} loading={requestInProgress}/>
-      <EditAvatarPopup isOpen={isEditAvatarPopupOpen} onClose={closeAllPopups} onUpdateAvatar={handleUpdateAvatar} loading={requestInProgress}/>
-      <AddPlacePopup isOpen={isAddPlacePopupOpen} onClose={closeAllPopups} onAddPlace={handleAddPlace} loading={requestInProgress}/>
-      <ImagePopup isOpen={isImagePopupOpen} card={selectedCard} onClose={closeAllPopups} />
-      <ConfirmPopup isOpen={isConfirmPopupOpen} onClose={closeAllPopups} onCardDeleteConfirm={handleCardDelete} loading={requestInProgress}/>
+      <EditProfilePopup 
+        isOpen={isEditProfilePopupOpen} 
+        onClose={closeAllPopups} 
+        onUpdateUser={handleUpdateUser} 
+        isLoading={requestInProgress}/>
+      <EditAvatarPopup 
+        isOpen={isEditAvatarPopupOpen} 
+        onClose={closeAllPopups} 
+        onUpdateAvatar={handleUpdateAvatar} 
+        isLoading={requestInProgress}/>
+      <AddPlacePopup 
+        isOpen={isAddPlacePopupOpen} 
+        onClose={closeAllPopups} 
+        onAddPlace={handleAddPlace} 
+        isLoading={requestInProgress}/>
+      <ImagePopup 
+        isOpen={isImagePopupOpen} 
+        onClose={closeAllPopups} 
+        card={selectedCard} />
+      <ConfirmPopup 
+        isOpen={isConfirmPopupOpen} 
+        onClose={closeAllPopups} 
+        onCardDeleteConfirm={handleCardDelete} 
+        isLoading={requestInProgress}/>
     </CurrentUserContext.Provider>
   );
 }

@@ -7,12 +7,14 @@ const EditProfilePopup = (props) => {
   const[description, setDescription] = React.useState('');
 
   const currentUser = React.useContext(CurrentUserContext);
-
-  React.useEffect(() => {
-    setName(currentUser.name);
-    setDescription(currentUser.about);
-  }, [currentUser]);
   
+  React.useEffect(() => {
+    if (props.isOpen) {
+      setName(currentUser.name);
+      setDescription(currentUser.about);
+    }
+  }, [props.isOpen, currentUser])
+
   function handleSubmit(e) {
     e.preventDefault();
 
@@ -29,22 +31,16 @@ const EditProfilePopup = (props) => {
   function handleDescription(e) {
     setDescription(e.target.value)
   }
-  //Для корректной работы сброса валидаций, я также возвращаю исходные значения для инпутов
-  function handleClose() {
-    setName(currentUser.name);
-    setDescription(currentUser.about);
-    props.onClose();
-  }
 
   return (
     <PopupWithForm
       isOpen={props.isOpen}
-      onClose={handleClose}
+      onClose={props.onClose}
       name="edit-profile"
       title="Редактировать профиль"
       onSubmit={handleSubmit}
-      submitText='Сохранить'
-      loading={props.loading}
+      submitText={`${props.isLoading ? 'Сохранение...' : 'Сохранить'}`}
+      isLoading={props.isLoading}
     >
       <label className="form__field">
         <input

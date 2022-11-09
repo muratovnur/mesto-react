@@ -10,24 +10,23 @@ const EditAvatarPopup = (props) => {
     props.onUpdateAvatar({
       avatar: inputRef.current.value
     })
-    inputRef.current.value = '';
   }
 
-  //Для корректной работы сброса валидаций, я также возвращаю исходные значения для инпутов
-  function handleClose() {
-    inputRef.current.value = '';
-    props.onClose();
-  }
+  React.useEffect(() => {
+    if(props.isOpen){
+      inputRef.current.value = '';
+    }
+  }, [props.isOpen])
 
   return (
     <PopupWithForm 
       isOpen={props.isOpen} 
-      onClose={handleClose} 
+      onClose={props.onClose} 
       name="update-avatar"
       title="Обновить аватар"
       onSubmit={handleSubmit}
-      submitText='Сохранить'
-      loading={props.loading}
+      submitText={`${props.isLoading ? 'Сохранение...' : 'Сохранить'}`}
+      isLoading={props.isLoading}
     >
       <label className="form__field">
         <input

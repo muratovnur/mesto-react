@@ -15,8 +15,8 @@ const ConfirmPopup = (props) => {
       name="confirm"
       title="Вы уверены?"
       onSubmit={handleSubmit}
-      submitText='Подтвердить'
-      loading={props.loading}
+      submitText={`${props.isLoading ? 'Подтверждение...' : 'Подтвердить'}`}
+      isLoading={props.isLoading}
     />
   )
 }
